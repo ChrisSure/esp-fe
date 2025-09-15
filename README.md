@@ -1,59 +1,203 @@
-# EspFrontend
+# ESP Frontend
 
-This project was generated using [Angular CLI](https://github.com/angular/angular-cli) version 20.3.1.
+A modern Angular application with comprehensive development tooling.
 
-## Development server
+## 🚀 Features
 
-To start a local development server, run:
+- **Angular 20.3** - Latest Angular framework
+- **TypeScript 5.9** - Strong typing support
+- **SCSS** - Enhanced styling with Sass
+- **ESLint** - Code linting and quality checks
+- **Prettier** - Code formatting
+- **Jest** - Modern JavaScript testing framework
+- **GitHub Actions** - CI/CD pipeline
+- **Husky** - Git hooks for code quality
 
-```bash
-ng serve
+## 📋 Prerequisites
+
+- Node.js 20.x or 22.x
+- npm 9.x or higher
+
+## 🛠️ Development Setup
+
+1. **Install dependencies:**
+
+   ```bash
+   npm install
+   ```
+
+2. **Start development server:**
+
+   ```bash
+   npm start
+   # or
+   npm run start
+   ```
+
+3. **Open your browser:**
+   Navigate to `http://localhost:4200`
+
+## 🔧 Available Scripts
+
+### Development
+
+- `npm start` - Start development server
+- `npm run build` - Build for development
+- `npm run build:prod` - Build for production
+- `npm run watch` - Build and watch for changes
+
+### Code Quality
+
+- `npm run lint` - Run ESLint
+- `npm run lint:fix` - Run ESLint with auto-fix
+- `npm run format` - Format code with Prettier
+- `npm run format:check` - Check code formatting
+- `npm run format:staged` - Format staged files only
+
+### Testing
+
+- `npm test` - Run tests with Jest
+- `npm run test:watch` - Run tests in watch mode
+- `npm run test:ci` - Run tests once (for CI)
+- `npm run test:coverage` - Run tests with coverage report
+
+## 🏗️ Project Structure
+
+```
+src/
+├── app/                 # Application components
+│   ├── app.config.ts   # Application configuration
+│   ├── app.routes.ts   # Routing configuration
+│   ├── app.ts          # Root component
+│   └── ...
+├── assets/             # Static assets
+├── index.html          # Main HTML file
+├── main.ts             # Application entry point
+└── styles.scss         # Global styles
 ```
 
-Once the server is running, open your browser and navigate to `http://localhost:4200/`. The application will automatically reload whenever you modify any of the source files.
+## 🔍 Code Quality
 
-## Code scaffolding
+### ESLint Configuration
 
-Angular CLI includes powerful code scaffolding tools. To generate a new component, run:
+- Angular-specific rules
+- TypeScript best practices
+- Template accessibility checks
+- Custom rules for consistent code style
+
+### Prettier Configuration
+
+- 100 character line width
+- Single quotes for strings
+- Trailing commas (ES5)
+- Angular template formatting
+
+### Pre-commit Hooks
+
+Automatically runs on each commit:
+
+- Code formatting check
+- Linting
+- Unit tests
+
+## 🚦 CI/CD Pipeline
+
+GitHub Actions workflow includes:
+
+- **Multi-version testing** (Node.js 20.x, 22.x)
+- **Code quality checks** (linting, formatting)
+- **Unit tests** with coverage
+- **Build verification**
+- **Artifact upload**
+
+### Workflow Triggers
+
+- Push to `main` or `develop` branches
+- Pull requests to `main` or `develop` branches
+
+## 🧪 Testing
+
+The project uses Jest for unit testing:
+
+- **Test files:** `*.spec.ts`
+- **Configuration:** `jest.config.js`
+- **Setup:** `setup-jest.ts`
+- **Coverage reports:** Generated in `coverage/` directory
+
+### Running Tests
 
 ```bash
-ng generate component component-name
+# Run all tests
+npm test
+
+# Watch mode (development)
+npm run test:watch
+
+# Single run (CI)
+npm run test:ci
+
+# With coverage
+npm run test:coverage
 ```
 
-For a complete list of available schematics (such as `components`, `directives`, or `pipes`), run:
+### Jest Configuration
 
-```bash
-ng generate --help
-```
+- **Zone.js setup** for Angular testing
+- **TypeScript support** with ts-jest
+- **Coverage collection** from `src/**/*.ts` files
+- **Mock DOM environment** with jsdom
+- **Angular-specific transformations** for components and templates
 
-## Building
+## 🔧 VS Code Setup
 
-To build the project run:
+The project includes VS Code configuration:
 
-```bash
-ng build
-```
+- **Recommended extensions** (`.vscode/extensions.json`)
+- **Debug configuration** (`.vscode/launch.json`)
+- **Task definitions** (`.vscode/tasks.json`)
 
-This will compile your project and store the build artifacts in the `dist/` directory. By default, the production build optimizes your application for performance and speed.
+## 📝 Git Workflow
 
-## Running unit tests
+1. **Feature development:**
 
-To execute unit tests with the [Karma](https://karma-runner.github.io) test runner, use the following command:
+   ```bash
+   git checkout -b feature/your-feature-name
+   # Make your changes
+   git add .
+   git commit -m "feat: your feature description"
+   ```
 
-```bash
-ng test
-```
+2. **Pre-commit hooks will automatically:**
+   - Format your code
+   - Run linting checks
+   - Execute unit tests
 
-## Running end-to-end tests
+3. **Push and create pull request:**
+   ```bash
+   git push origin feature/your-feature-name
+   ```
 
-For end-to-end (e2e) testing, run:
+## 🛡️ Code Quality Standards
 
-```bash
-ng e2e
-```
+- **ESLint:** Enforces consistent code style and catches potential errors
+- **Prettier:** Maintains consistent code formatting
+- **TypeScript:** Provides static type checking
+- **Unit Tests:** Ensures code reliability and prevents regressions
 
-Angular CLI does not come with an end-to-end testing framework by default. You can choose one that suits your needs.
+## 🤝 Contributing
 
-## Additional Resources
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Ensure all checks pass:
+   ```bash
+   npm run lint
+   npm run format:check
+   npm run test:ci
+   npm run build
+   ```
+5. Submit a pull request
 
-For more information on using the Angular CLI, including detailed command references, visit the [Angular CLI Overview and Command Reference](https://angular.dev/tools/cli) page.
+## 📄 License
+
+This project is licensed under the MIT License.
