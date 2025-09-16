@@ -1,5 +1,7 @@
 import { MatSnackBar } from '@angular/material/snack-bar';
+import { of, throwError } from 'rxjs';
 import { DashboardComponent } from './dashboard.component';
+import { TranscriptionService, TranscriptionResponse } from '../../services/transcription.service';
 
 // Mock MediaRecorder
 class MockMediaRecorder {
@@ -27,6 +29,7 @@ class MockMediaRecorder {
 describe('DashboardComponent - Unit Tests', () => {
   let component: DashboardComponent;
   let snackBarSpy: jest.Mocked<MatSnackBar>;
+  let transcriptionServiceSpy: jest.Mocked<TranscriptionService>;
   let mockGetUserMedia: jest.Mock;
 
   beforeEach(() => {
@@ -34,6 +37,13 @@ describe('DashboardComponent - Unit Tests', () => {
     snackBarSpy = {
       open: jest.fn(),
     } as jest.Mocked<MatSnackBar>;
+
+    // Create spy for TranscriptionService
+    transcriptionServiceSpy = {
+      transcribeAudio: jest.fn(),
+      transcribeAudioAsMP3: jest.fn(),
+      checkServiceHealth: jest.fn(),
+    } as jest.Mocked<TranscriptionService>;
 
     // Setup global mocks
     mockGetUserMedia = jest.fn();
@@ -85,7 +95,7 @@ describe('DashboardComponent - Unit Tests', () => {
     });
 
     // Create component instance manually
-    component = new DashboardComponent(snackBarSpy);
+    component = new DashboardComponent(snackBarSpy, transcriptionServiceSpy);
   });
 
   afterEach(() => {
@@ -102,6 +112,12 @@ describe('DashboardComponent - Unit Tests', () => {
       expect(component.mediaRecorder).toBeNull();
       expect(component.audioChunks).toEqual([]);
       expect(component.audioUrl).toBeNull();
+
+      // Transcription properties
+      expect(component.isTranscribing).toBe(false);
+      expect(component.transcriptionResult).toBeNull();
+      expect(component.transcriptionError).toBeNull();
+      expect(component.lastTranscriptionTime).toBeNull();
     });
   });
 
@@ -247,6 +263,9 @@ describe('DashboardComponent - Unit Tests', () => {
     it('should clear recording when audio URL exists', () => {
       component.audioUrl = 'mock-audio-url';
       component.audioChunks = [new Blob(['data'])];
+      component.transcriptionResult = 'Some transcription';
+      component.transcriptionError = 'Some error';
+      component.lastTranscriptionTime = new Date();
       const urlSpy = jest.spyOn(URL, 'revokeObjectURL');
 
       component.clearRecording();
@@ -254,6 +273,10 @@ describe('DashboardComponent - Unit Tests', () => {
       expect(urlSpy).toHaveBeenCalledWith('mock-audio-url');
       expect(component.audioUrl).toBeNull();
       expect(component.audioChunks).toEqual([]);
+      // Should also clear transcription data
+      expect(component.transcriptionResult).toBeNull();
+      expect(component.transcriptionError).toBeNull();
+      expect(component.lastTranscriptionTime).toBeNull();
       expect(snackBarSpy.open).toHaveBeenCalledWith(
         'Recording cleared.',
         'Close',
@@ -372,6 +395,184 @@ describe('DashboardComponent - Unit Tests', () => {
 
       // Should not have added the empty chunk
       expect(component.audioChunks).toEqual([]);
+    });
+  });
+
+  describe('Transcription Functionality', () => {
+    beforeEach(() => {
+      // Setup component with mock audio data
+      component.audioUrl = 'mock-audio-url';
+      component.audioChunks = [new Blob(['mock audio data'], { type: 'audio/webm' })];
+    });
+
+    it('should transcribe audio successfully', () => {
+      const mockResponse: TranscriptionResponse = {
+        transcription: 'Hello world test transcription',
+        confidence: 0.95,
+      };
+      transcriptionServiceSpy.transcribeAudioAsMP3.mockReturnValue(of(mockResponse));
+
+      component.transcribeAudio();
+
+      expect(component.isTranscribing).toBe(false);
+      expect(component.transcriptionResult).toBe(mockResponse.transcription);
+      expect(component.lastTranscriptionTime).toBeTruthy();
+      expect(transcriptionServiceSpy.transcribeAudioAsMP3).toHaveBeenCalledWith(expect.any(Blob));
+      expect(snackBarSpy.open).toHaveBeenCalledWith(
+        'Transcription completed successfully!',
+        'Close',
+        expect.objectContaining({
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        }),
+      );
+    });
+
+    it('should handle transcription error', () => {
+      const errorMessage = 'Transcription service unavailable';
+      transcriptionServiceSpy.transcribeAudioAsMP3.mockReturnValue(
+        throwError(() => new Error(errorMessage)),
+      );
+
+      component.transcribeAudio();
+
+      expect(component.isTranscribing).toBe(false);
+      expect(component.transcriptionError).toBe(errorMessage);
+      expect(component.transcriptionResult).toBeNull();
+      expect(snackBarSpy.open).toHaveBeenCalledWith(
+        `Transcription failed: ${errorMessage}`,
+        'Close',
+        expect.objectContaining({
+          duration: 5000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        }),
+      );
+    });
+
+    it('should not transcribe when no audio is available', () => {
+      component.audioUrl = null;
+      component.audioChunks = [];
+
+      component.transcribeAudio();
+
+      expect(transcriptionServiceSpy.transcribeAudioAsMP3).not.toHaveBeenCalled();
+      expect(snackBarSpy.open).toHaveBeenCalledWith(
+        'No audio recording available to transcribe.',
+        'Close',
+        expect.objectContaining({
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        }),
+      );
+    });
+
+    it('should copy transcription to clipboard', async () => {
+      component.transcriptionResult = 'Test transcription text';
+
+      // Mock clipboard API
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: jest.fn().mockResolvedValue(undefined),
+        },
+        writable: true,
+      });
+
+      await component.copyTranscription();
+
+      expect(navigator.clipboard.writeText).toHaveBeenCalledWith('Test transcription text');
+      expect(snackBarSpy.open).toHaveBeenCalledWith(
+        'Transcription copied to clipboard!',
+        'Close',
+        expect.objectContaining({
+          duration: 2000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        }),
+      );
+    });
+
+    it('should handle clipboard copy error', async () => {
+      component.transcriptionResult = 'Test transcription text';
+
+      // Mock clipboard API to fail
+      Object.defineProperty(navigator, 'clipboard', {
+        value: {
+          writeText: jest.fn().mockRejectedValue(new Error('Clipboard unavailable')),
+        },
+        writable: true,
+      });
+
+      await component.copyTranscription();
+
+      expect(snackBarSpy.open).toHaveBeenCalledWith(
+        'Failed to copy to clipboard.',
+        'Close',
+        expect.objectContaining({
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        }),
+      );
+    });
+
+    it('should not copy when no transcription result exists', async () => {
+      component.transcriptionResult = null;
+
+      const clipboardSpy = jest.fn();
+      Object.defineProperty(navigator, 'clipboard', {
+        value: { writeText: clipboardSpy },
+        writable: true,
+      });
+
+      await component.copyTranscription();
+
+      expect(clipboardSpy).not.toHaveBeenCalled();
+    });
+
+    it('should clear transcription data', () => {
+      component.transcriptionResult = 'Some transcription';
+      component.transcriptionError = 'Some error';
+      component.lastTranscriptionTime = new Date();
+
+      component.clearTranscription();
+
+      expect(component.transcriptionResult).toBeNull();
+      expect(component.transcriptionError).toBeNull();
+      expect(component.lastTranscriptionTime).toBeNull();
+      expect(snackBarSpy.open).toHaveBeenCalledWith(
+        'Transcription cleared.',
+        'Close',
+        expect.objectContaining({
+          duration: 2000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        }),
+      );
+    });
+
+    it('should show loading state during transcription', () => {
+      transcriptionServiceSpy.transcribeAudioAsMP3.mockImplementation(() => {
+        // Check loading state during call
+        expect(component.isTranscribing).toBe(true);
+        expect(component.transcriptionError).toBeNull();
+        expect(component.transcriptionResult).toBeNull();
+        return of({ transcription: 'Test result' });
+      });
+
+      component.transcribeAudio();
+
+      expect(snackBarSpy.open).toHaveBeenCalledWith(
+        'Sending audio for transcription...',
+        'Close',
+        expect.objectContaining({
+          duration: 2000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        }),
+      );
     });
   });
 });

@@ -23,6 +23,9 @@ export default [
         Blob: 'readonly',
         URL: 'readonly',
         Audio: 'readonly',
+        FormData: 'readonly',
+        File: 'readonly',
+        ErrorEvent: 'readonly',
       },
     },
     plugins: {
@@ -73,6 +76,11 @@ export default [
         Blob: 'readonly',
         URL: 'readonly',
         Audio: 'readonly',
+        FormData: 'readonly',
+        File: 'readonly',
+        ErrorEvent: 'readonly',
+        ProgressEvent: 'readonly',
+        fail: 'readonly',
       },
     },
     plugins: {

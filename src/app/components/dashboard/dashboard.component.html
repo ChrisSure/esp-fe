@@ -51,9 +51,79 @@
             Download
           </button>
 
+          <button
+            mat-raised-button
+            color="warn"
+            [disabled]="isTranscribing"
+            (click)="transcribeAudio()"
+          >
+            <mat-icon *ngIf="!isTranscribing">transcribe</mat-icon>
+            <mat-spinner *ngIf="isTranscribing" diameter="20"></mat-spinner>
+            {{ isTranscribing ? 'Transcribing...' : 'Transcribe' }}
+          </button>
+
           <button mat-raised-button (click)="clearRecording()">
             <mat-icon>delete</mat-icon>
             Clear
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+
+  <!-- Transcription Results Card -->
+  <mat-card
+    class="transcription-card"
+    *ngIf="transcriptionResult || transcriptionError || isTranscribing"
+  >
+    <mat-card-header>
+      <mat-card-title>
+        <mat-icon>text_snippet</mat-icon>
+        Transcription Result
+      </mat-card-title>
+      <mat-card-subtitle *ngIf="lastTranscriptionTime">
+        Generated on {{ lastTranscriptionTime | date: 'short' }}
+      </mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+      <!-- Loading State -->
+      <div *ngIf="isTranscribing" class="transcription-loading">
+        <mat-spinner diameter="40"></mat-spinner>
+        <p>Processing audio transcription...</p>
+        <small>This may take a few moments depending on the audio length.</small>
+      </div>
+
+      <!-- Success State -->
+      <div *ngIf="transcriptionResult && !isTranscribing" class="transcription-result">
+        <div class="transcription-text">
+          <p>{{ transcriptionResult }}</p>
+        </div>
+
+        <mat-divider></mat-divider>
+
+        <div class="transcription-actions">
+          <button mat-raised-button color="primary" (click)="copyTranscription()">
+            <mat-icon>content_copy</mat-icon>
+            Copy
+          </button>
+
+          <button mat-raised-button (click)="clearTranscription()">
+            <mat-icon>clear</mat-icon>
+            Clear
+          </button>
+        </div>
+      </div>
+
+      <!-- Error State -->
+      <div *ngIf="transcriptionError && !isTranscribing" class="transcription-error">
+        <mat-icon color="warn">error_outline</mat-icon>
+        <div class="error-content">
+          <h4>Transcription Failed</h4>
+          <p>{{ transcriptionError }}</p>
+          <button mat-raised-button color="primary" (click)="transcribeAudio()">
+            <mat-icon>refresh</mat-icon>
+            Try Again
           </button>
         </div>
       </div>

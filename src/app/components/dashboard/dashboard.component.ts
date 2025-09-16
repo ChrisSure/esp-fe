@@ -3,12 +3,23 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatDividerModule } from '@angular/material/divider';
 import { CommonModule } from '@angular/common';
+import { TranscriptionService, TranscriptionResponse } from '../../services/transcription.service';
 
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, MatButtonModule, MatIconModule, MatCardModule, MatSnackBarModule],
+  imports: [
+    CommonModule,
+    MatButtonModule,
+    MatIconModule,
+    MatCardModule,
+    MatSnackBarModule,
+    MatProgressSpinnerModule,
+    MatDividerModule,
+  ],
   templateUrl: './dashboard.component.html',
   styleUrl: './dashboard.component.scss',
 })
@@ -18,7 +29,16 @@ export class DashboardComponent implements OnDestroy {
   audioChunks: Blob[] = [];
   audioUrl: string | null = null;
 
-  constructor(private readonly snackBar: MatSnackBar) {}
+  // Transcription properties
+  isTranscribing = false;
+  transcriptionResult: string | null = null;
+  transcriptionError: string | null = null;
+  lastTranscriptionTime: Date | null = null;
+
+  constructor(
+    private readonly snackBar: MatSnackBar,
+    private readonly transcriptionService: TranscriptionService,
+  ) {}
 
   async startRecording() {
     try {
@@ -132,12 +152,107 @@ export class DashboardComponent implements OnDestroy {
       this.audioUrl = null;
       this.audioChunks = [];
 
+      // Clear transcription data as well
+      this.transcriptionResult = null;
+      this.transcriptionError = null;
+      this.lastTranscriptionTime = null;
+
       this.snackBar.open('Recording cleared.', 'Close', {
         duration: 2000,
         horizontalPosition: 'center',
         verticalPosition: 'bottom',
       });
     }
+  }
+
+  /**
+   * Send recorded audio for transcription
+   */
+  transcribeAudio() {
+    if (!this.audioUrl || this.audioChunks.length === 0) {
+      this.snackBar.open('No audio recording available to transcribe.', 'Close', {
+        duration: 3000,
+        horizontalPosition: 'center',
+        verticalPosition: 'bottom',
+      });
+      return;
+    }
+
+    this.isTranscribing = true;
+    this.transcriptionError = null;
+    this.transcriptionResult = null;
+
+    // Create blob from audio chunks
+    const audioBlob = new Blob(this.audioChunks, { type: 'audio/webm' });
+
+    this.snackBar.open('Sending audio for transcription...', 'Close', {
+      duration: 2000,
+      horizontalPosition: 'center',
+      verticalPosition: 'bottom',
+    });
+
+    this.transcriptionService.transcribeAudioAsMP3(audioBlob).subscribe({
+      next: (response: TranscriptionResponse) => {
+        this.isTranscribing = false;
+        this.transcriptionResult = response.transcription;
+        this.lastTranscriptionTime = new Date();
+
+        this.snackBar.open('Transcription completed successfully!', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        });
+      },
+      error: (error: Error) => {
+        this.isTranscribing = false;
+        this.transcriptionError = error.message;
+
+        this.snackBar.open(`Transcription failed: ${error.message}`, 'Close', {
+          duration: 5000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        });
+      },
+    });
+  }
+
+  /**
+   * Copy transcription result to clipboard
+   */
+  copyTranscription() {
+    if (this.transcriptionResult) {
+      navigator.clipboard
+        .writeText(this.transcriptionResult)
+        .then(() => {
+          this.snackBar.open('Transcription copied to clipboard!', 'Close', {
+            duration: 2000,
+            horizontalPosition: 'center',
+            verticalPosition: 'bottom',
+          });
+        })
+        .catch(() => {
+          this.snackBar.open('Failed to copy to clipboard.', 'Close', {
+            duration: 3000,
+            horizontalPosition: 'center',
+            verticalPosition: 'bottom',
+          });
+        });
+    }
+  }
+
+  /**
+   * Clear transcription results
+   */
+  clearTranscription() {
+    this.transcriptionResult = null;
+    this.transcriptionError = null;
+    this.lastTranscriptionTime = null;
+
+    this.snackBar.open('Transcription cleared.', 'Close', {
+      duration: 2000,
+      horizontalPosition: 'center',
+      verticalPosition: 'bottom',
+    });
   }
 
   ngOnDestroy() {
