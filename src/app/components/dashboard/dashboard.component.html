@@ -1,0 +1,62 @@
+<div class="dashboard-container">
+  <mat-card class="recording-card">
+    <mat-card-content>
+      <div class="recording-controls">
+        <button
+          mat-fab
+          color="primary"
+          class="record-button"
+          [disabled]="isRecording"
+          (click)="startRecording()"
+          [class.recording]="isRecording"
+        >
+          <mat-icon>{{ isRecording ? 'mic' : 'mic_none' }}</mat-icon>
+        </button>
+
+        <button
+          mat-fab
+          color="warn"
+          class="stop-button"
+          [disabled]="!isRecording"
+          (click)="stopRecording()"
+        >
+          <mat-icon>stop</mat-icon>
+        </button>
+      </div>
+
+      <div class="recording-status">
+        <p *ngIf="isRecording" class="recording-text">
+          <mat-icon class="pulse">fiber_manual_record</mat-icon>
+          Recording in progress...
+        </p>
+        <p *ngIf="!isRecording && !audioUrl" class="idle-text">
+          Click the microphone button to start recording
+        </p>
+        <p *ngIf="!isRecording && audioUrl" class="completed-text">
+          <mat-icon>check_circle</mat-icon>
+          Recording completed
+        </p>
+      </div>
+
+      <!-- Playback Controls (shown when recording exists) -->
+      <div class="playback-controls" *ngIf="audioUrl && !isRecording">
+        <div class="playback-buttons">
+          <button mat-raised-button color="primary" (click)="playRecording()">
+            <mat-icon>play_arrow</mat-icon>
+            Play
+          </button>
+
+          <button mat-raised-button color="accent" (click)="downloadRecording()">
+            <mat-icon>download</mat-icon>
+            Download
+          </button>
+
+          <button mat-raised-button (click)="clearRecording()">
+            <mat-icon>delete</mat-icon>
+            Clear
+          </button>
+        </div>
+      </div>
+    </mat-card-content>
+  </mat-card>
+</div>
