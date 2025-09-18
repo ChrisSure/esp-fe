@@ -222,6 +222,49 @@
       }
     }
   }
+
+  .transcription-audio-status {
+    margin: 1rem 0;
+
+    .audio-status-info {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+      padding: 0.75rem;
+      background-color: var(--mat-sys-surface-container);
+      border-radius: 8px;
+      border-left: 4px solid var(--mat-sys-secondary);
+
+      mat-icon {
+        color: var(--mat-sys-secondary);
+        transition: all 0.3s ease;
+
+        &.playing {
+          color: var(--mat-sys-primary);
+          animation: pulse 1.5s infinite;
+        }
+      }
+
+      span {
+        font-size: 0.9rem;
+        color: var(--mat-sys-on-surface-variant);
+      }
+    }
+
+    button {
+      width: 100%;
+      margin-top: 0.5rem;
+
+      mat-icon {
+        margin-right: 0.5rem;
+      }
+
+      &:disabled {
+        opacity: 0.7;
+      }
+    }
+  }
 }
 
 .transcription-error {
@@ -297,6 +340,15 @@
 
     button {
       width: 100%;
+    }
+  }
+
+  .transcription-audio-status {
+    .audio-status-info {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 0.5rem;
+      text-align: left;
     }
   }
 

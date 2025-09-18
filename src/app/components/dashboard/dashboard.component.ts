@@ -35,6 +35,10 @@ export class DashboardComponent implements OnDestroy {
   transcriptionError: string | null = null;
   lastTranscriptionTime: Date | null = null;
 
+  // Audio playback properties for transcription response
+  transcriptionAudioUrl: string | null = null;
+  isPlayingTranscriptionAudio = false;
+
   constructor(
     private readonly snackBar: MatSnackBar,
     private readonly transcriptionService: TranscriptionService,
@@ -157,6 +161,13 @@ export class DashboardComponent implements OnDestroy {
       this.transcriptionError = null;
       this.lastTranscriptionTime = null;
 
+      // Clear transcription audio URL
+      if (this.transcriptionAudioUrl) {
+        URL.revokeObjectURL(this.transcriptionAudioUrl);
+        this.transcriptionAudioUrl = null;
+      }
+      this.isPlayingTranscriptionAudio = false;
+
       this.snackBar.open('Recording cleared.', 'Close', {
         duration: 2000,
         horizontalPosition: 'center',
@@ -197,6 +208,11 @@ export class DashboardComponent implements OnDestroy {
         this.transcriptionResult = response.transcription;
         this.lastTranscriptionTime = new Date();
 
+        // Handle audio buffer if present in response
+        if (response.audioBuffer) {
+          this.handleTranscriptionAudioBuffer(response.audioBuffer);
+        }
+
         this.snackBar.open('Transcription completed successfully!', 'Close', {
           duration: 3000,
           horizontalPosition: 'center',
@@ -214,6 +230,71 @@ export class DashboardComponent implements OnDestroy {
         });
       },
     });
+  }
+
+  /**
+   * Handle audio buffer from transcription response and play automatically
+   */
+  private handleTranscriptionAudioBuffer(base64Audio: string) {
+    try {
+      // Clean up previous transcription audio URL if exists
+      if (this.transcriptionAudioUrl) {
+        URL.revokeObjectURL(this.transcriptionAudioUrl);
+      }
+
+      // Create audio URL from base64 encoded audio using the transcription service
+      this.transcriptionAudioUrl = this.transcriptionService.createAudioUrlFromBase64(base64Audio);
+
+      // Automatically play the audio
+      this.playTranscriptionAudio();
+
+      this.snackBar.open('Playing transcription audio...', 'Close', {
+        duration: 2000,
+        horizontalPosition: 'center',
+        verticalPosition: 'bottom',
+      });
+    } catch (error) {
+      console.warn('Error handling transcription audio buffer:', error);
+      this.snackBar.open('Error processing transcription audio', 'Close', {
+        duration: 3000,
+        horizontalPosition: 'center',
+        verticalPosition: 'bottom',
+      });
+    }
+  }
+
+  /**
+   * Play the transcription audio received from backend
+   */
+  playTranscriptionAudio() {
+    if (this.transcriptionAudioUrl && !this.isPlayingTranscriptionAudio) {
+      this.isPlayingTranscriptionAudio = true;
+      const audio = new Audio(this.transcriptionAudioUrl);
+
+      // Handle audio events
+      audio.onended = () => {
+        this.isPlayingTranscriptionAudio = false;
+      };
+
+      audio.onerror = () => {
+        this.isPlayingTranscriptionAudio = false;
+        this.snackBar.open('Error playing transcription audio', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        });
+      };
+
+      audio.play().catch((error) => {
+        this.isPlayingTranscriptionAudio = false;
+        console.warn('Transcription audio playback error:', error);
+        this.snackBar.open('Error playing transcription audio', 'Close', {
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        });
+      });
+    }
   }
 
   /**
@@ -248,6 +329,13 @@ export class DashboardComponent implements OnDestroy {
     this.transcriptionError = null;
     this.lastTranscriptionTime = null;
 
+    // Clean up transcription audio URL
+    if (this.transcriptionAudioUrl) {
+      URL.revokeObjectURL(this.transcriptionAudioUrl);
+      this.transcriptionAudioUrl = null;
+    }
+    this.isPlayingTranscriptionAudio = false;
+
     this.snackBar.open('Transcription cleared.', 'Close', {
       duration: 2000,
       horizontalPosition: 'center',
@@ -259,6 +347,9 @@ export class DashboardComponent implements OnDestroy {
     // Clean up when component is destroyed
     if (this.audioUrl) {
       URL.revokeObjectURL(this.audioUrl);
+    }
+    if (this.transcriptionAudioUrl) {
+      URL.revokeObjectURL(this.transcriptionAudioUrl);
     }
     if (this.mediaRecorder && this.isRecording) {
       this.mediaRecorder.stop();

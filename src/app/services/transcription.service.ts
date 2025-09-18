@@ -8,6 +8,7 @@ export interface TranscriptionResponse {
   confidence?: number;
   duration?: number;
   language?: string;
+  audioBuffer?: string; // Base64 encoded audio data
 }
 
 export interface TranscriptionError {
@@ -66,7 +67,9 @@ export class TranscriptionService {
     formData.append('originalFormat', 'webm'); // Let API know the source format
 
     return this.http
-      .post<TranscriptionResponse>(this.apiUrl, formData)
+      .post<TranscriptionResponse>(this.apiUrl, formData, {
+        responseType: 'json', // Ensure we can handle both text and binary data
+      })
       .pipe(catchError(this.handleError));
   }
 
@@ -77,6 +80,56 @@ export class TranscriptionService {
     return this.http
       .get<{ status: string; uptime?: number }>(`${this.apiUrl}/health`)
       .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Converts base64 encoded audio string to ArrayBuffer
+   * @param base64Audio - Base64 encoded audio data
+   * @returns ArrayBuffer containing the audio data
+   */
+  base64ToArrayBuffer(base64Audio: string): ArrayBuffer {
+    // Remove data URL prefix if present (e.g., "data:audio/mp3;base64,")
+    const base64Data = base64Audio.includes(',') ? base64Audio.split(',')[1] : base64Audio;
+    // Use window.atob for browser compatibility
+    const binaryString = window.atob(base64Data);
+    const bytes = new Uint8Array(binaryString.length);
+    for (let i = 0; i < binaryString.length; i++) {
+      bytes[i] = binaryString.charCodeAt(i);
+    }
+    return bytes.buffer;
+  }
+
+  /**
+   * Converts ArrayBuffer to Blob for audio playback
+   * @param audioBuffer - The audio buffer from the backend
+   * @param mimeType - The MIME type of the audio (default: audio/mp3)
+   * @returns Blob that can be used for audio playback
+   */
+  createAudioBlobFromBuffer(audioBuffer: ArrayBuffer, mimeType: string = 'audio/mp3'): Blob {
+    return new Blob([audioBuffer], { type: mimeType });
+  }
+
+  /**
+   * Creates an audio URL from base64 encoded audio for immediate playback
+   * @param base64Audio - Base64 encoded audio data from the backend
+   * @param mimeType - The MIME type of the audio (default: audio/mp3)
+   * @returns URL that can be used with Audio API
+   */
+  createAudioUrlFromBase64(base64Audio: string, mimeType: string = 'audio/mp3'): string {
+    const arrayBuffer = this.base64ToArrayBuffer(base64Audio);
+    const blob = this.createAudioBlobFromBuffer(arrayBuffer, mimeType);
+    return URL.createObjectURL(blob);
+  }
+
+  /**
+   * Creates an audio URL from ArrayBuffer for immediate playback
+   * @param audioBuffer - The audio buffer from the backend
+   * @param mimeType - The MIME type of the audio (default: audio/mp3)
+   * @returns URL that can be used with Audio API
+   */
+  createAudioUrlFromBuffer(audioBuffer: ArrayBuffer, mimeType: string = 'audio/mp3'): string {
+    const blob = this.createAudioBlobFromBuffer(audioBuffer, mimeType);
+    return URL.createObjectURL(blob);
   }
 
   /**
@@ -120,7 +173,10 @@ export class TranscriptionService {
     }
 
     // Only log errors in non-test environments
-    if (typeof (globalThis as any)['test'] === 'undefined' && typeof jest === 'undefined') {
+    if (
+      !(globalThis as unknown as { __TESTING__?: boolean })['__TESTING__'] &&
+      !(globalThis as unknown as { jest?: unknown })['jest']
+    ) {
       console.error('Transcription API Error:', error);
     }
     return throwError(() => new Error(errorMessage));

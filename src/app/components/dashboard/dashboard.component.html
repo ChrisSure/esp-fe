@@ -102,6 +102,34 @@
 
         <mat-divider></mat-divider>
 
+        <!-- Audio Playback Status -->
+        <div *ngIf="transcriptionAudioUrl" class="transcription-audio-status">
+          <mat-divider></mat-divider>
+          <div class="audio-status-info">
+            <mat-icon [class.playing]="isPlayingTranscriptionAudio">
+              {{ isPlayingTranscriptionAudio ? 'volume_up' : 'volume_off' }}
+            </mat-icon>
+            <span>
+              {{
+                isPlayingTranscriptionAudio
+                  ? 'Playing transcription audio...'
+                  : 'Transcription audio ready'
+              }}
+            </span>
+          </div>
+          <button
+            mat-raised-button
+            color="accent"
+            [disabled]="isPlayingTranscriptionAudio"
+            (click)="playTranscriptionAudio()"
+          >
+            <mat-icon>replay</mat-icon>
+            {{ isPlayingTranscriptionAudio ? 'Playing...' : 'Replay Audio' }}
+          </button>
+        </div>
+
+        <mat-divider *ngIf="transcriptionAudioUrl"></mat-divider>
+
         <div class="transcription-actions">
           <button mat-raised-button color="primary" (click)="copyTranscription()">
             <mat-icon>content_copy</mat-icon>

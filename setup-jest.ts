@@ -3,6 +3,9 @@ import { setupZoneTestEnv } from 'jest-preset-angular/setup-env/zone';
 // Setup Zone.js testing environment
 setupZoneTestEnv();
 
+// Mark that we're in a test environment
+(globalThis as any)['__TESTING__'] = true;
+
 // Custom Jest setup can be added here
 Object.defineProperty(window, 'CSS', { value: null });
 Object.defineProperty(window, 'getComputedStyle', {
