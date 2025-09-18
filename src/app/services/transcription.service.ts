@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpErrorResponse } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, switchMap, tap, map } from 'rxjs/operators';
 
 export interface TranscriptionResponse {
   transcription: string;
@@ -17,20 +17,69 @@ export interface TranscriptionError {
   statusCode?: number;
 }
 
+export interface ConversationStartResponse {
+  conversationId: string;
+  status: string;
+  message?: string;
+}
+
 @Injectable({
   providedIn: 'root',
 })
 export class TranscriptionService {
   private readonly apiUrl = 'http://localhost:3000/record';
+  private readonly conversationUrl = 'http://localhost:3000/conversation/start';
+  private startedConversations = new Set<string>();
+  private conversationIdMapping = new Map<string, string>(); // frontend ID -> backend ID
 
   constructor(private http: HttpClient) {}
+
+  /**
+   * Start a new conversation session
+   * @param conversationId - The conversation ID to start
+   * @returns Observable with conversation start response
+   */
+  startConversation(conversationId: string): Observable<ConversationStartResponse> {
+    const payload = { conversationId };
+
+    return this.http
+      .post<ConversationStartResponse>(this.conversationUrl, payload)
+      .pipe(catchError(this.handleError));
+  }
+
+  /**
+   * Ensures conversation is started before proceeding
+   * @param conversationId - The conversation ID to check/start
+   * @returns Observable that completes when conversation is ready, returning the actual conversationId to use
+   */
+  private ensureConversationStarted(conversationId: string): Observable<string> {
+    if (this.startedConversations.has(conversationId)) {
+      // Conversation already started, return the backend conversationId
+      const backendConversationId =
+        this.conversationIdMapping.get(conversationId) || conversationId;
+      return new Observable((observer) => {
+        observer.next(backendConversationId);
+        observer.complete();
+      });
+    }
+
+    return this.startConversation(conversationId).pipe(
+      tap((response) => {
+        // Mark this conversation as started and store the mapping
+        this.startedConversations.add(conversationId);
+        this.conversationIdMapping.set(conversationId, response.conversationId);
+      }),
+      // Return the conversationId from the backend response
+      map((response) => response.conversationId),
+    );
+  }
 
   /**
    * Sends audio blob to transcription API
    * @param audioBlob - The recorded audio blob
    * @returns Observable with transcription response
    */
-  transcribeAudio(audioBlob: Blob): Observable<TranscriptionResponse> {
+  transcribeAudio(audioBlob: Blob, conversationId?: string): Observable<TranscriptionResponse> {
     const formData = new FormData();
 
     // Convert WebM to MP3-compatible format if needed
@@ -43,8 +92,14 @@ export class TranscriptionService {
     formData.append('format', 'webm');
     formData.append('timestamp', new Date().toISOString());
 
+    // Add conversationId as query parameter if provided
+    let urlWithParams = this.apiUrl;
+    if (conversationId) {
+      urlWithParams = `${this.apiUrl}?conversationId=${encodeURIComponent(conversationId)}`;
+    }
+
     return this.http
-      .post<TranscriptionResponse>(this.apiUrl, formData)
+      .post<TranscriptionResponse>(urlWithParams, formData)
       .pipe(catchError(this.handleError));
   }
 
@@ -52,25 +107,41 @@ export class TranscriptionService {
    * Alternative method that converts audio to MP3 format first
    * Note: This would require a WebM to MP3 conversion library
    */
-  transcribeAudioAsMP3(audioBlob: Blob): Observable<TranscriptionResponse> {
-    // For now, we'll use the same method but indicate MP3 preference
-    // TODO: Add actual WebM to MP3 conversion using a library like FFmpeg.wasm
-    const formData = new FormData();
+  transcribeAudioAsMP3(audioBlob: Blob, conversationId: string): Observable<TranscriptionResponse> {
+    // First ensure the conversation is started, then proceed with transcription
+    return this.ensureConversationStarted(conversationId).pipe(
+      switchMap((actualConversationId) => {
+        // For now, we'll use the same method but indicate MP3 preference
+        // TODO: Add actual WebM to MP3 conversion using a library like FFmpeg.wasm
+        const formData = new FormData();
 
-    const audioFile = new File([audioBlob], 'recording.mp3', {
-      type: 'audio/mp3',
-    });
+        const audioFile = new File([audioBlob], 'recording.mp3', {
+          type: 'audio/mp3',
+        });
 
-    formData.append('audio', audioFile);
-    formData.append('format', 'mp3');
-    formData.append('preferredFormat', 'mp3');
-    formData.append('originalFormat', 'webm'); // Let API know the source format
+        formData.append('audio', audioFile);
+        formData.append('format', 'mp3');
+        formData.append('preferredFormat', 'mp3');
+        formData.append('originalFormat', 'webm'); // Let API know the source format
 
-    return this.http
-      .post<TranscriptionResponse>(this.apiUrl, formData, {
-        responseType: 'json', // Ensure we can handle both text and binary data
-      })
-      .pipe(catchError(this.handleError));
+        // Use the conversationId from the /conversation/start response as query parameter
+        const urlWithParams = `${this.apiUrl}?conversationId=${encodeURIComponent(actualConversationId)}`;
+
+        return this.http
+          .post<TranscriptionResponse>(urlWithParams, formData, {
+            responseType: 'json', // Ensure we can handle both text and binary data
+          })
+          .pipe(catchError(this.handleError));
+      }),
+    );
+  }
+
+  /**
+   * Clear the record of started conversations (useful when starting a new session)
+   */
+  clearStartedConversations(): void {
+    this.startedConversations.clear();
+    this.conversationIdMapping.clear();
   }
 
   /**

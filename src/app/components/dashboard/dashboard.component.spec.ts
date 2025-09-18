@@ -44,6 +44,7 @@ describe('DashboardComponent - Unit Tests', () => {
       transcribeAudioAsMP3: jest.fn(),
       checkServiceHealth: jest.fn(),
       createAudioUrlFromBase64: jest.fn(),
+      clearStartedConversations: jest.fn(),
     } as jest.Mocked<TranscriptionService>;
 
     // Setup global mocks
@@ -124,6 +125,10 @@ describe('DashboardComponent - Unit Tests', () => {
       expect(component.transcriptionResult).toBeNull();
       expect(component.transcriptionError).toBeNull();
       expect(component.lastTranscriptionTime).toBeNull();
+
+      // Session properties
+      expect(component.conversationId).toBeTruthy();
+      expect(component.conversationId).toMatch(/^conv_\d+_[a-z0-9]+$/);
     });
   });
 
@@ -220,7 +225,10 @@ describe('DashboardComponent - Unit Tests', () => {
       jest.advanceTimersByTime(500);
 
       // Now transcription should be called
-      expect(transcriptionServiceSpy.transcribeAudioAsMP3).toHaveBeenCalledWith(expect.any(Blob));
+      expect(transcriptionServiceSpy.transcribeAudioAsMP3).toHaveBeenCalledWith(
+        expect.any(Blob),
+        component.conversationId,
+      );
     });
   });
 
@@ -451,7 +459,10 @@ describe('DashboardComponent - Unit Tests', () => {
       expect(component.isTranscribing).toBe(false);
       expect(component.transcriptionResult).toBe(mockResponse.transcription);
       expect(component.lastTranscriptionTime).toBeTruthy();
-      expect(transcriptionServiceSpy.transcribeAudioAsMP3).toHaveBeenCalledWith(expect.any(Blob));
+      expect(transcriptionServiceSpy.transcribeAudioAsMP3).toHaveBeenCalledWith(
+        expect.any(Blob),
+        component.conversationId,
+      );
       expect(snackBarSpy.open).toHaveBeenCalledWith(
         'Transcription completed successfully!',
         'Close',
@@ -606,6 +617,82 @@ describe('DashboardComponent - Unit Tests', () => {
           horizontalPosition: 'center',
           verticalPosition: 'bottom',
         }),
+      );
+    });
+  });
+
+  describe('Session Management', () => {
+    it('should generate conversation ID on initialization', () => {
+      expect(component.conversationId).toBeTruthy();
+      expect(component.conversationId).toMatch(/^conv_\d+_[a-z0-9]+$/);
+    });
+
+    it('should return short conversation ID', () => {
+      component.conversationId = 'conv_1234567890_abcdefghijk';
+      const shortId = component.getShortConversationId();
+      expect(shortId).toBe('defghijk');
+      expect(shortId.length).toBe(8);
+    });
+
+    it('should start new session and clear data', () => {
+      // Set up existing data
+      component.audioUrl = 'mock-audio-url';
+      component.audioChunks = [new Blob(['data'])];
+      component.transcriptionResult = 'Some transcription';
+      component.transcriptionError = 'Some error';
+      component.lastTranscriptionTime = new Date();
+      component.transcriptionAudioUrl = 'mock-transcription-audio-url';
+      const oldConversationId = component.conversationId;
+
+      const urlSpy = jest.spyOn(URL, 'revokeObjectURL');
+
+      component.startNewSession();
+
+      // Should generate new conversation ID
+      expect(component.conversationId).not.toBe(oldConversationId);
+      expect(component.conversationId).toMatch(/^conv_\d+_[a-z0-9]+$/);
+
+      // Should clear service conversations
+      expect(transcriptionServiceSpy.clearStartedConversations).toHaveBeenCalled();
+
+      // Should clear all data
+      expect(component.audioUrl).toBeNull();
+      expect(component.audioChunks).toEqual([]);
+      expect(component.transcriptionResult).toBeNull();
+      expect(component.transcriptionError).toBeNull();
+      expect(component.lastTranscriptionTime).toBeNull();
+      expect(component.transcriptionAudioUrl).toBeNull();
+      expect(component.isPlayingTranscriptionAudio).toBe(false);
+
+      // Should revoke URLs
+      expect(urlSpy).toHaveBeenCalledWith('mock-audio-url');
+      expect(urlSpy).toHaveBeenCalledWith('mock-transcription-audio-url');
+
+      // Should show notification
+      expect(snackBarSpy.open).toHaveBeenCalledWith(
+        'New session started!',
+        'Close',
+        expect.objectContaining({
+          duration: 3000,
+          horizontalPosition: 'center',
+          verticalPosition: 'bottom',
+        }),
+      );
+    });
+
+    it('should handle new session with no existing data', () => {
+      const oldConversationId = component.conversationId;
+      const urlSpy = jest.spyOn(URL, 'revokeObjectURL');
+
+      component.startNewSession();
+
+      expect(component.conversationId).not.toBe(oldConversationId);
+      expect(transcriptionServiceSpy.clearStartedConversations).toHaveBeenCalled();
+      expect(urlSpy).not.toHaveBeenCalled(); // No URLs to revoke
+      expect(snackBarSpy.open).toHaveBeenCalledWith(
+        'New session started!',
+        'Close',
+        expect.any(Object),
       );
     });
   });

@@ -1,11 +1,16 @@
 import { TestBed } from '@angular/core/testing';
 import { HttpClientTestingModule, HttpTestingController } from '@angular/common/http/testing';
-import { TranscriptionService, TranscriptionResponse } from './transcription.service';
+import {
+  TranscriptionService,
+  TranscriptionResponse,
+  ConversationStartResponse,
+} from './transcription.service';
 
 describe('TranscriptionService', () => {
   let service: TranscriptionService;
   let httpMock: HttpTestingController;
   const apiUrl = 'http://localhost:3000/record';
+  const conversationUrl = 'http://localhost:3000/conversation/start';
 
   beforeEach(() => {
     TestBed.configureTestingModule({
@@ -25,7 +30,7 @@ describe('TranscriptionService', () => {
   });
 
   describe('transcribeAudio', () => {
-    it('should send audio blob and return transcription', () => {
+    it('should send audio blob and return transcription without conversationId', () => {
       const mockResponse: TranscriptionResponse = {
         transcription: 'Hello world',
         confidence: 0.95,
@@ -50,6 +55,27 @@ describe('TranscriptionService', () => {
       expect(audioFile.name).toBe('recording.webm');
       expect(formData.get('format')).toBe('webm');
       expect(formData.get('timestamp')).toBeTruthy();
+
+      req.flush(mockResponse);
+    });
+
+    it('should send audio blob with conversationId as query parameter', () => {
+      const mockResponse: TranscriptionResponse = {
+        transcription: 'Hello world with conversation',
+        confidence: 0.95,
+      };
+
+      const audioBlob = new Blob(['test audio data'], { type: 'audio/webm' });
+      const conversationId = 'test-conv-id';
+
+      service.transcribeAudio(audioBlob, conversationId).subscribe((response) => {
+        expect(response).toEqual(mockResponse);
+      });
+
+      const expectedUrl = `${apiUrl}?conversationId=${encodeURIComponent(conversationId)}`;
+      const req = httpMock.expectOne(expectedUrl);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body instanceof FormData).toBeTruthy();
 
       req.flush(mockResponse);
     });
@@ -124,28 +150,78 @@ describe('TranscriptionService', () => {
   });
 
   describe('transcribeAudioAsMP3', () => {
-    it('should send audio blob as MP3 format', () => {
-      const mockResponse: TranscriptionResponse = {
+    it('should start conversation first then send audio blob as MP3 format', () => {
+      const conversationId = 'test-conv-id';
+      const backendConversationId = 'backend-conv-id';
+      const mockConversationResponse: ConversationStartResponse = {
+        conversationId: backendConversationId,
+        status: 'started',
+      };
+      const mockTranscriptionResponse: TranscriptionResponse = {
         transcription: 'Hello world MP3',
       };
 
       const audioBlob = new Blob(['test audio data'], { type: 'audio/webm' });
 
-      service.transcribeAudioAsMP3(audioBlob).subscribe((response) => {
-        expect(response).toEqual(mockResponse);
+      service.transcribeAudioAsMP3(audioBlob, conversationId).subscribe((response) => {
+        expect(response).toEqual(mockTranscriptionResponse);
       });
 
-      const req = httpMock.expectOne(apiUrl);
-      expect(req.request.method).toBe('POST');
+      // First expect conversation start request
+      const conversationReq = httpMock.expectOne(conversationUrl);
+      expect(conversationReq.request.method).toBe('POST');
+      expect(conversationReq.request.body).toEqual({ conversationId });
+      conversationReq.flush(mockConversationResponse);
 
-      const formData = req.request.body as FormData;
+      // Then expect transcription request with backend conversationId
+      const expectedUrl = `${apiUrl}?conversationId=${encodeURIComponent(backendConversationId)}`;
+      const transcriptionReq = httpMock.expectOne(expectedUrl);
+      expect(transcriptionReq.request.method).toBe('POST');
+
+      const formData = transcriptionReq.request.body as FormData;
       const audioFile = formData.get('audio') as File;
       expect(audioFile.name).toBe('recording.mp3');
       expect(audioFile.type).toBe('audio/mp3');
       expect(formData.get('format')).toBe('mp3');
       expect(formData.get('preferredFormat')).toBe('mp3');
 
-      req.flush(mockResponse);
+      transcriptionReq.flush(mockTranscriptionResponse);
+    });
+
+    it('should reuse existing conversation and skip start call', () => {
+      const conversationId = 'test-conv-id';
+      const backendConversationId = 'backend-conv-id';
+      const mockConversationResponse: ConversationStartResponse = {
+        conversationId: backendConversationId,
+        status: 'started',
+      };
+      const mockTranscriptionResponse: TranscriptionResponse = {
+        transcription: 'Hello world MP3 reused',
+      };
+
+      const audioBlob = new Blob(['test audio data'], { type: 'audio/webm' });
+
+      // First call - should start conversation
+      service.transcribeAudioAsMP3(audioBlob, conversationId).subscribe();
+
+      const conversationReq = httpMock.expectOne(conversationUrl);
+      conversationReq.flush(mockConversationResponse);
+
+      const firstTranscriptionReq = httpMock.expectOne(
+        `${apiUrl}?conversationId=${encodeURIComponent(backendConversationId)}`,
+      );
+      firstTranscriptionReq.flush(mockTranscriptionResponse);
+
+      // Second call - should skip conversation start
+      service.transcribeAudioAsMP3(audioBlob, conversationId).subscribe((response) => {
+        expect(response).toEqual(mockTranscriptionResponse);
+      });
+
+      // Should NOT make another conversation start request
+      const secondTranscriptionReq = httpMock.expectOne(
+        `${apiUrl}?conversationId=${encodeURIComponent(backendConversationId)}`,
+      );
+      secondTranscriptionReq.flush(mockTranscriptionResponse);
     });
   });
 
@@ -174,6 +250,84 @@ describe('TranscriptionService', () => {
 
       const req = httpMock.expectOne(`${apiUrl}/health`);
       req.error(new ProgressEvent('error'), { status: 0 });
+    });
+  });
+
+  describe('startConversation', () => {
+    it('should start a new conversation', () => {
+      const conversationId = 'test-conv-id';
+      const mockResponse: ConversationStartResponse = {
+        conversationId: 'backend-conv-id',
+        status: 'started',
+        message: 'Conversation started successfully',
+      };
+
+      service.startConversation(conversationId).subscribe((response) => {
+        expect(response).toEqual(mockResponse);
+      });
+
+      const req = httpMock.expectOne(conversationUrl);
+      expect(req.request.method).toBe('POST');
+      expect(req.request.body).toEqual({ conversationId });
+      req.flush(mockResponse);
+    });
+
+    it('should handle conversation start error', () => {
+      const conversationId = 'test-conv-id';
+
+      service.startConversation(conversationId).subscribe({
+        next: () => fail('Expected error'),
+        error: (error) => {
+          expect(error.message).toBe(
+            'Unable to connect to transcription service. Please check if the server is running.',
+          );
+        },
+      });
+
+      const req = httpMock.expectOne(conversationUrl);
+      req.error(new ProgressEvent('error'), { status: 0 });
+    });
+  });
+
+  describe('clearStartedConversations', () => {
+    it('should clear started conversations and allow restarting', () => {
+      const conversationId = 'test-conv-id';
+      const backendConversationId = 'backend-conv-id';
+      const mockConversationResponse: ConversationStartResponse = {
+        conversationId: backendConversationId,
+        status: 'started',
+      };
+      const mockTranscriptionResponse: TranscriptionResponse = {
+        transcription: 'Hello world',
+      };
+
+      const audioBlob = new Blob(['test audio data'], { type: 'audio/webm' });
+
+      // First call - should start conversation
+      service.transcribeAudioAsMP3(audioBlob, conversationId).subscribe();
+
+      const conversationReq = httpMock.expectOne(conversationUrl);
+      conversationReq.flush(mockConversationResponse);
+
+      const transcriptionReq = httpMock.expectOne(
+        `${apiUrl}?conversationId=${encodeURIComponent(backendConversationId)}`,
+      );
+      transcriptionReq.flush(mockTranscriptionResponse);
+
+      // Clear conversations
+      service.clearStartedConversations();
+
+      // Second call - should start conversation again after clearing
+      service.transcribeAudioAsMP3(audioBlob, conversationId).subscribe();
+
+      const secondConversationReq = httpMock.expectOne(conversationUrl);
+      expect(secondConversationReq.request.body).toEqual({ conversationId });
+      secondConversationReq.flush(mockConversationResponse);
+
+      const secondTranscriptionReq = httpMock.expectOne(
+        `${apiUrl}?conversationId=${encodeURIComponent(backendConversationId)}`,
+      );
+      secondTranscriptionReq.flush(mockTranscriptionResponse);
     });
   });
 

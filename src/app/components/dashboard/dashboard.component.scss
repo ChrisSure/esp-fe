@@ -7,6 +7,32 @@
   gap: 2rem;
 }
 
+.session-card {
+  padding: 1rem 2rem;
+}
+
+.session-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+
+  .session-display {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: var(--mat-sys-on-surface-variant);
+
+    .session-text {
+      font-size: 0.9rem;
+      font-family: monospace;
+      background-color: var(--mat-sys-surface-variant);
+      padding: 0.25rem 0.5rem;
+      border-radius: 4px;
+    }
+  }
+}
+
 .recording-card {
   padding: 2rem;
   text-align: center;
@@ -193,6 +219,21 @@
   .dashboard-container {
     margin: 1rem auto;
     padding: 0.5rem;
+  }
+
+  .session-info {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1rem;
+
+    .session-display {
+      align-self: stretch;
+      justify-content: center;
+    }
+
+    button {
+      align-self: stretch;
+    }
   }
 
   .recording-controls {

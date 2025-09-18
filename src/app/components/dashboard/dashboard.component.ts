@@ -39,10 +39,16 @@ export class DashboardComponent implements OnDestroy {
   transcriptionAudioUrl: string | null = null;
   isPlayingTranscriptionAudio = false;
 
+  // Conversation ID for this session
+  conversationId: string;
+
   constructor(
     private readonly snackBar: MatSnackBar,
     private readonly transcriptionService: TranscriptionService,
-  ) {}
+  ) {
+    // Generate a unique conversation ID for this session
+    this.conversationId = this.generateConversationId();
+  }
 
   async startRecording() {
     try {
@@ -207,7 +213,7 @@ export class DashboardComponent implements OnDestroy {
       verticalPosition: 'bottom',
     });
 
-    this.transcriptionService.transcribeAudioAsMP3(audioBlob).subscribe({
+    this.transcriptionService.transcribeAudioAsMP3(audioBlob, this.conversationId).subscribe({
       next: (response: TranscriptionResponse) => {
         this.isTranscribing = false;
         this.transcriptionResult = response.transcription;
@@ -346,6 +352,41 @@ export class DashboardComponent implements OnDestroy {
       horizontalPosition: 'center',
       verticalPosition: 'bottom',
     });
+  }
+
+  /**
+   * Generate a unique conversation ID
+   */
+  private generateConversationId(): string {
+    return 'conv_' + Date.now() + '_' + Math.random().toString(36).substring(2, 15);
+  }
+
+  /**
+   * Start a new conversation session
+   */
+  startNewSession() {
+    // Generate new conversation ID
+    this.conversationId = this.generateConversationId();
+
+    // Clear the record of started conversations in the service
+    this.transcriptionService.clearStartedConversations();
+
+    // Clear all existing data
+    this.clearRecording();
+    this.clearTranscription();
+
+    this.snackBar.open('New session started!', 'Close', {
+      duration: 3000,
+      horizontalPosition: 'center',
+      verticalPosition: 'bottom',
+    });
+  }
+
+  /**
+   * Get a shortened display version of the conversation ID
+   */
+  getShortConversationId(): string {
+    return this.conversationId.substring(this.conversationId.length - 8);
   }
 
   ngOnDestroy() {
