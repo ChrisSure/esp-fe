@@ -91,64 +91,6 @@
   font-weight: 500;
 }
 
-.playback-controls {
-  margin-top: 2rem;
-  padding-top: 2rem;
-  border-top: 1px solid var(--mat-sys-outline-variant);
-}
-
-.playback-buttons {
-  display: flex;
-  justify-content: center;
-  gap: 1rem;
-  flex-wrap: wrap;
-
-  button {
-    min-width: 120px;
-    padding: 0.75rem 1.5rem;
-
-    mat-icon {
-      margin-right: 0.5rem;
-    }
-  }
-}
-
-.instructions-card {
-  mat-card-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  ol {
-    line-height: 1.8;
-    padding-left: 1.5rem;
-
-    li {
-      margin-bottom: 0.5rem;
-    }
-  }
-
-  .note {
-    margin-top: 1.5rem;
-    padding: 1rem;
-    background-color: var(--mat-sys-surface-variant);
-    border-radius: 8px;
-    display: flex;
-    align-items: flex-start;
-    gap: 0.5rem;
-    font-size: 0.9rem;
-
-    mat-icon {
-      color: var(--mat-sys-primary);
-      font-size: 1.2rem;
-      width: 1.2rem;
-      height: 1.2rem;
-      margin-top: 0.1rem;
-    }
-  }
-}
-
 // Animations
 @keyframes pulse {
   0% {
@@ -168,12 +110,6 @@
 // Transcription Card Styles
 .transcription-card {
   margin-top: 2rem;
-
-  mat-card-title {
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-  }
 }
 
 .transcription-loading {
@@ -211,58 +147,9 @@
     }
   }
 
-  .transcription-actions {
-    display: flex;
-    gap: 1rem;
-    margin-top: 1rem;
-
+  .transcription-audio-controls {
     button {
-      mat-icon {
-        margin-right: 0.5rem;
-      }
-    }
-  }
-
-  .transcription-audio-status {
-    margin: 1rem 0;
-
-    .audio-status-info {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      margin-bottom: 1rem;
-      padding: 0.75rem;
-      background-color: var(--mat-sys-surface-container);
-      border-radius: 8px;
-      border-left: 4px solid var(--mat-sys-secondary);
-
-      mat-icon {
-        color: var(--mat-sys-secondary);
-        transition: all 0.3s ease;
-
-        &.playing {
-          color: var(--mat-sys-primary);
-          animation: pulse 1.5s infinite;
-        }
-      }
-
-      span {
-        font-size: 0.9rem;
-        color: var(--mat-sys-on-surface-variant);
-      }
-    }
-
-    button {
-      width: 100%;
-      margin-top: 0.5rem;
-
-      mat-icon {
-        margin-right: 0.5rem;
-      }
-
-      &:disabled {
-        opacity: 0.7;
-      }
+      margin-top: 15px;
     }
   }
 }
@@ -322,33 +209,6 @@
       font-size: 2rem;
       width: 2rem;
       height: 2rem;
-    }
-  }
-
-  .playback-buttons {
-    flex-direction: column;
-    align-items: center;
-
-    button {
-      width: 100%;
-      max-width: 200px;
-    }
-  }
-
-  .transcription-actions {
-    flex-direction: column;
-
-    button {
-      width: 100%;
-    }
-  }
-
-  .transcription-audio-status {
-    .audio-status-info {
-      flex-direction: column;
-      align-items: flex-start;
-      gap: 0.5rem;
-      text-align: left;
     }
   }
 

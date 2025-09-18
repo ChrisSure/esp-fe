@@ -26,6 +26,8 @@ export default [
         FormData: 'readonly',
         File: 'readonly',
         ErrorEvent: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
       },
     },
     plugins: {
@@ -80,6 +82,8 @@ export default [
         File: 'readonly',
         ErrorEvent: 'readonly',
         ProgressEvent: 'readonly',
+        setTimeout: 'readonly',
+        clearTimeout: 'readonly',
         fail: 'readonly',
       },
     },

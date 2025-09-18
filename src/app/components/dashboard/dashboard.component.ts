@@ -116,11 +116,16 @@ export class DashboardComponent implements OnDestroy {
       this.mediaRecorder.stop();
       this.isRecording = false;
 
-      this.snackBar.open('Recording stopped.', 'Close', {
+      this.snackBar.open('Recording stopped. Processing...', 'Close', {
         duration: 2000,
         horizontalPosition: 'center',
         verticalPosition: 'bottom',
       });
+
+      // Automatically transcribe the audio after a short delay to ensure the recording is processed
+      setTimeout(() => {
+        this.transcribeAudio();
+      }, 500);
     }
   }
 

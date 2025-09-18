@@ -43,10 +43,14 @@ describe('DashboardComponent - Unit Tests', () => {
       transcribeAudio: jest.fn(),
       transcribeAudioAsMP3: jest.fn(),
       checkServiceHealth: jest.fn(),
+      createAudioUrlFromBase64: jest.fn(),
     } as jest.Mocked<TranscriptionService>;
 
     // Setup global mocks
     mockGetUserMedia = jest.fn();
+
+    // Mock setTimeout
+    jest.useFakeTimers();
 
     Object.defineProperty(global, 'MediaRecorder', {
       writable: true,
@@ -100,6 +104,8 @@ describe('DashboardComponent - Unit Tests', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
   });
 
   describe('Component Initialization', () => {
@@ -169,7 +175,7 @@ describe('DashboardComponent - Unit Tests', () => {
 
       expect(component.isRecording).toBe(false);
       expect(snackBarSpy.open).toHaveBeenCalledWith(
-        'Recording stopped.',
+        'Recording stopped. Processing...',
         'Close',
         expect.objectContaining({
           duration: 2000,
@@ -183,10 +189,38 @@ describe('DashboardComponent - Unit Tests', () => {
       component.stopRecording();
 
       expect(snackBarSpy.open).not.toHaveBeenCalledWith(
-        'Recording stopped.',
+        'Recording stopped. Processing...',
         'Close',
         expect.any(Object),
       );
+    });
+
+    it('should automatically trigger transcription after stopping recording', async () => {
+      // Setup mock for transcription service
+      transcriptionServiceSpy.transcribeAudioAsMP3.mockReturnValue(
+        of({ transcription: 'Test transcription' }),
+      );
+
+      // Start recording first
+      const mockStream = { getTracks: jest.fn(() => [{ stop: jest.fn() }]) } as any;
+      mockGetUserMedia.mockResolvedValue(mockStream);
+      await component.startRecording();
+
+      // Setup audio data as if recording was successful
+      component.audioChunks = [new Blob(['mock audio data'], { type: 'audio/webm' })];
+      component.audioUrl = 'mock-audio-url';
+
+      // Stop recording
+      component.stopRecording();
+
+      // Verify transcription is not called immediately
+      expect(transcriptionServiceSpy.transcribeAudioAsMP3).not.toHaveBeenCalled();
+
+      // Fast-forward the timer
+      jest.advanceTimersByTime(500);
+
+      // Now transcription should be called
+      expect(transcriptionServiceSpy.transcribeAudioAsMP3).toHaveBeenCalledWith(expect.any(Blob));
     });
   });
 

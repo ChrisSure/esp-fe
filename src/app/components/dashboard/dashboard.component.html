@@ -37,37 +37,6 @@
           Recording completed
         </p>
       </div>
-
-      <!-- Playback Controls (shown when recording exists) -->
-      <div class="playback-controls" *ngIf="audioUrl && !isRecording">
-        <div class="playback-buttons">
-          <button mat-raised-button color="primary" (click)="playRecording()">
-            <mat-icon>play_arrow</mat-icon>
-            Play
-          </button>
-
-          <button mat-raised-button color="accent" (click)="downloadRecording()">
-            <mat-icon>download</mat-icon>
-            Download
-          </button>
-
-          <button
-            mat-raised-button
-            color="warn"
-            [disabled]="isTranscribing"
-            (click)="transcribeAudio()"
-          >
-            <mat-icon *ngIf="!isTranscribing">transcribe</mat-icon>
-            <mat-spinner *ngIf="isTranscribing" diameter="20"></mat-spinner>
-            {{ isTranscribing ? 'Transcribing...' : 'Transcribe' }}
-          </button>
-
-          <button mat-raised-button (click)="clearRecording()">
-            <mat-icon>delete</mat-icon>
-            Clear
-          </button>
-        </div>
-      </div>
     </mat-card-content>
   </mat-card>
 
@@ -76,16 +45,6 @@
     class="transcription-card"
     *ngIf="transcriptionResult || transcriptionError || isTranscribing"
   >
-    <mat-card-header>
-      <mat-card-title>
-        <mat-icon>text_snippet</mat-icon>
-        Transcription Result
-      </mat-card-title>
-      <mat-card-subtitle *ngIf="lastTranscriptionTime">
-        Generated on {{ lastTranscriptionTime | date: 'short' }}
-      </mat-card-subtitle>
-    </mat-card-header>
-
     <mat-card-content>
       <!-- Loading State -->
       <div *ngIf="isTranscribing" class="transcription-loading">
@@ -100,23 +59,9 @@
           <p>{{ transcriptionResult }}</p>
         </div>
 
-        <mat-divider></mat-divider>
-
-        <!-- Audio Playback Status -->
-        <div *ngIf="transcriptionAudioUrl" class="transcription-audio-status">
+        <!-- Replay Audio Button -->
+        <div *ngIf="transcriptionAudioUrl" class="transcription-audio-controls">
           <mat-divider></mat-divider>
-          <div class="audio-status-info">
-            <mat-icon [class.playing]="isPlayingTranscriptionAudio">
-              {{ isPlayingTranscriptionAudio ? 'volume_up' : 'volume_off' }}
-            </mat-icon>
-            <span>
-              {{
-                isPlayingTranscriptionAudio
-                  ? 'Playing transcription audio...'
-                  : 'Transcription audio ready'
-              }}
-            </span>
-          </div>
           <button
             mat-raised-button
             color="accent"
@@ -125,20 +70,6 @@
           >
             <mat-icon>replay</mat-icon>
             {{ isPlayingTranscriptionAudio ? 'Playing...' : 'Replay Audio' }}
-          </button>
-        </div>
-
-        <mat-divider *ngIf="transcriptionAudioUrl"></mat-divider>
-
-        <div class="transcription-actions">
-          <button mat-raised-button color="primary" (click)="copyTranscription()">
-            <mat-icon>content_copy</mat-icon>
-            Copy
-          </button>
-
-          <button mat-raised-button (click)="clearTranscription()">
-            <mat-icon>clear</mat-icon>
-            Clear
           </button>
         </div>
       </div>
